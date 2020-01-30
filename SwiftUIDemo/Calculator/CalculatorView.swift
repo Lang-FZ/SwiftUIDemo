@@ -12,21 +12,54 @@ let scale: CGFloat = UIScreen.main.bounds.width / 414
 
 struct CalculatorView: View {
     
+    @EnvironmentObject var model: CalculatorModel
+    @State private var editingHistory = false
+    @State private var showingResult = false
+    
     var body: some View {
          
         VStack(spacing: 12) {
             
             Spacer()
+            
+            Button("操作履历: \(model.history.count)") {
+                self.editingHistory = true
+            }.sheet(isPresented: self.$editingHistory) {
+                HistoryView(model: self.model) {
+                    self.editingHistory = false
+                }
+            }
                 
-            Text("0")
+            Text(model.brain.output)
                 .font(.system(size: 76))
                 .minimumScaleFactor(0.5)
                 .padding(.horizontal, 24)
                 .lineLimit(1)
                 .frame(minWidth: 0, maxWidth: .infinity, alignment: .trailing)
+                .onTapGesture {
+                    
+                    self.showingResult = true
+                
+                    if !self.model.historyOnlyDigit &&
+                        self.model.historyContainDigit &&
+                        self.model.history.last?.description ?? "" != CalculatorButtonItem.Op.equal.rawValue {
+                        
+                        self.model.apply(.op(.equal))
+                    }
+                }
             
             CalculatorButtonPad()
                 .padding(.bottom)
+        }
+        .alert(isPresented: self.$showingResult) {
+            return Alert(
+                title: Text(self.model.historyDetail),
+                message: Text(self.model.brain.output),
+                primaryButton: Alert.Button.cancel(Text("取消")),
+                secondaryButton: Alert.Button.default(Text("复制"), action: {
+                    UIPasteboard.general.string = self.model.brain.output
+                })
+            )
         }
     }
 }
@@ -63,6 +96,8 @@ struct CalculatorButtonPad: View {
 
 struct CalculatorButtonRow: View {
     
+    @EnvironmentObject var model: CalculatorModel
+    
     let row: [CalculatorButtonItem]
     
     var body: some View {
@@ -77,7 +112,7 @@ struct CalculatorButtonRow: View {
                     size: item.size,
                     backgroundColorName: item.backgroundColorName) {
                         
-                        print("Button: \(item.title)")
+                        self.model.apply(item)
                 }
             }
         }
